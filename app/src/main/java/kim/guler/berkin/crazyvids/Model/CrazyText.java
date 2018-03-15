@@ -47,4 +47,8 @@ public class CrazyText {
         return this.path.get(time);
     }
 
+    @Override
+    public String toString() {
+        return this.crazyTextView.getText().toString();
+    }
 }

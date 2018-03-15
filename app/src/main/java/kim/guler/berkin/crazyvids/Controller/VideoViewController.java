@@ -3,7 +3,6 @@ package kim.guler.berkin.crazyvids.Controller;
 import android.annotation.SuppressLint;
 import android.graphics.Point;
 import android.media.MediaPlayer;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -33,9 +32,8 @@ public class VideoViewController implements View.OnTouchListener, MediaPlayer.On
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouch(View view, MotionEvent event) {
-        Log.d("ahmet", MotionEvent.actionToString(event.getAction()));
         VideoView videoView = (VideoView) view;
-        switch (event.getAction()) {
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 FrameLayout frameLayout = mainVideoActivity.findViewById(R.id.video_canvas);
                 frameLayout.addView(this.crazyText.getCrazyTextView());
@@ -53,7 +51,6 @@ public class VideoViewController implements View.OnTouchListener, MediaPlayer.On
                 this.mainVideoActivity.playVideo(true);
 
                 return true;
-            case MotionEvent.ACTION_POINTER_DOWN:
             case MotionEvent.ACTION_MOVE:
                 if (!isVideoComplete) {
                     int curx = (int) event.getRawX() - this.crazyText.getCrazyTextView().getWidth() / 2;
@@ -68,7 +65,7 @@ public class VideoViewController implements View.OnTouchListener, MediaPlayer.On
                     videoView.setOnTouchListener((v, motionEvent) -> false);
                     return false;
                 }
-            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 this.mainVideoActivity.pauseVideo(true);
                 videoView.setOnTouchListener((v, motionEvent) -> false);

@@ -1,6 +1,7 @@
 package kim.guler.berkin.crazyvids.Model;
 
 import android.content.Context;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,19 @@ public class CrazyTextHolder {
         CrazyText crazyText = new CrazyText(text, context);
         this.crazyTextList.add(crazyText);
         return crazyText;
+    }
+
+    public TextView removeCrazyText(String crazyText) {
+        CrazyText remove = null;
+        for (CrazyText ct : this.crazyTextList) {
+            if (ct.toString().equals(crazyText))
+                remove = ct;
+        }
+        if (remove != null) {
+            this.crazyTextList.remove(remove);
+            return remove.getCrazyTextView();
+        } else
+            return null;
     }
 
 

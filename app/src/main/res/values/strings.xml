@@ -4,4 +4,5 @@
     <string name="add_text_button_text">Add text</string>
     <string name="pause_button_text">Pause</string>
     <string name="save_button_text">Save</string>
+    <string name="delete_button_text">Delete</string>
 </resources>
