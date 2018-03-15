@@ -18,10 +18,10 @@ public class VideoSeekBarProgressController implements SeekBar.OnSeekBarChangeLi
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-//        if(fromUser)
-//            return;
-//
-//        this.mainVideoActivity.seekVideoTo(progress);
+        if (!fromUser)
+            return;
+
+        this.mainVideoActivity.seekVideoTo(progress);
     }
 
     @Override

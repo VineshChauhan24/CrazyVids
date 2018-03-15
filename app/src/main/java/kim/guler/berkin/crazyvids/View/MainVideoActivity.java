@@ -1,8 +1,6 @@
 package kim.guler.berkin.crazyvids.View;
 
 import android.graphics.Point;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.support.v7.app.AlertDialog;
@@ -17,12 +15,33 @@ import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.VideoView;
+
+import com.google.android.exoplayer2.ExoPlaybackException;
+import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.PlaybackParameters;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.Timeline;
+import com.google.android.exoplayer2.source.ExtractorMediaSource;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.TrackGroupArray;
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelection;
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
+import com.google.android.exoplayer2.trackselection.TrackSelector;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.BandwidthMeter;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DataSpec;
+import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.RawResourceDataSource;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import kim.guler.berkin.crazyvids.Controller.MainVideoButtonController;
+import kim.guler.berkin.crazyvids.Controller.VideoSeekBarProgressController;
 import kim.guler.berkin.crazyvids.Controller.VideoViewController;
 import kim.guler.berkin.crazyvids.Model.CrazyText;
 import kim.guler.berkin.crazyvids.Model.CrazyTextHolder;
@@ -30,16 +49,12 @@ import kim.guler.berkin.crazyvids.R;
 
 public class MainVideoActivity extends AppCompatActivity {
 
-    private VideoView videoView;
-    private MediaPlayer videoViewMediaPlayer;
+    private PlayerView videoView;
     private Button playPauseButton, addTextButton, saveButton, deleteCrazyTextButton;
     private SeekBar videoSeekBar;
     private RelativeLayout deleteTextsLayout;
     private Spinner crazyTextsSpinner;
     private FrameLayout videoCanvas;
-
-    private MainVideoButtonController mainVideoButtonController;
-    private VideoViewController videoViewController;
 
     private CrazyTextHolder crazyTextHolder = CrazyTextHolder.getInstance();
 
@@ -49,21 +64,26 @@ public class MainVideoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main_video);
 
         this.assignViews();
-        this.disableUserTracking();
+        this.enableUserVideoTracking();
 
-        this.mainVideoButtonController = new MainVideoButtonController(this);
+        MainVideoButtonController mainVideoButtonController = new MainVideoButtonController(this);
 
-        this.playPauseButton.setOnClickListener(this.mainVideoButtonController);
-        this.addTextButton.setOnClickListener(this.mainVideoButtonController);
-        this.saveButton.setOnClickListener(this.mainVideoButtonController);
-        this.deleteCrazyTextButton.setOnClickListener(this.mainVideoButtonController);
+        this.playPauseButton.setOnClickListener(mainVideoButtonController);
+        this.addTextButton.setOnClickListener(mainVideoButtonController);
+        this.saveButton.setOnClickListener(mainVideoButtonController);
+        this.deleteCrazyTextButton.setOnClickListener(mainVideoButtonController);
+        this.videoSeekBar.setOnSeekBarChangeListener(new VideoSeekBarProgressController(this));
 
         this.loadVideo();
 
     }
 
-    private void disableUserTracking() {
+    private void disableUserVideoTracking() {
         this.videoSeekBar.setOnTouchListener((view, motionEvent) -> true);
+    }
+
+    private void enableUserVideoTracking() {
+        this.videoSeekBar.setOnTouchListener((view, motionEvent) -> false);
     }
 
     private void assignViews() {
@@ -79,16 +99,69 @@ public class MainVideoActivity extends AppCompatActivity {
     }
 
     private void loadVideo() {
-        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.video);
-        this.videoView.setVideoURI(videoUri);
-        MediaPlayer mp = MediaPlayer.create(this, videoUri);
-        this.videoSeekBar.setMax(mp.getDuration());
-        mp.release();
-        this.videoView.setOnPreparedListener(mediaPlayer -> {
-            this.videoViewMediaPlayer = mediaPlayer;
-            this.videoViewMediaPlayer.setLooping(true);
-            this.videoViewMediaPlayer.seekTo(100);
+
+        BandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
+        TrackSelection.Factory videoTrackSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+        TrackSelector trackSelector = new DefaultTrackSelector(videoTrackSelectionFactory);
+
+        SimpleExoPlayer player = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
+        this.videoView.setPlayer(player);
+
+        DataSpec dataSpec = new DataSpec(RawResourceDataSource.buildRawResourceUri(R.raw.video));
+        RawResourceDataSource rawResourceDataSource = new RawResourceDataSource(this);
+        try {
+            rawResourceDataSource.open(dataSpec);
+        } catch (RawResourceDataSource.RawResourceDataSourceException ex) {
+            ex.printStackTrace();
+        }
+        DataSource.Factory factory = () -> rawResourceDataSource;
+        MediaSource videoSource = new ExtractorMediaSource.Factory(factory).createMediaSource(rawResourceDataSource.getUri());
+        player.prepare(videoSource);
+
+        player.addListener(new Player.EventListener() {
+            @Override
+            public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
+                videoSeekBar.setMax((int) player.getDuration());
+            }
+
+            @Override
+            public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
+            }
+
+            @Override
+            public void onLoadingChanged(boolean isLoading) {
+            }
+
+            @Override
+            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+            }
+
+            @Override
+            public void onRepeatModeChanged(int repeatMode) {
+            }
+
+            @Override
+            public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
+            }
+
+            @Override
+            public void onPlayerError(ExoPlaybackException error) {
+            }
+
+            @Override
+            public void onPositionDiscontinuity(int reason) {
+            }
+
+            @Override
+            public void onPlaybackParametersChanged(PlaybackParameters playbackParameters) {
+            }
+
+            @Override
+            public void onSeekProcessed() {
+            }
         });
+
+        player.setRepeatMode(Player.REPEAT_MODE_ALL);
     }
 
     public void playVideo(boolean samplingMode) {
@@ -100,9 +173,9 @@ public class MainVideoActivity extends AppCompatActivity {
             this.playPauseButton.setLayoutParams(params);
             this.addTextButton.setVisibility(View.GONE);
         } else
-            this.videoViewMediaPlayer.setLooping(false);
+            this.videoView.getPlayer().setRepeatMode(Player.REPEAT_MODE_OFF);
 
-        this.videoView.start();
+        this.videoView.getPlayer().setPlayWhenReady(true);
         this.videoSeekBar.postDelayed(new TrackVideoUpdateSeekBarRunnable(), 100);
 
         if (this.crazyTextHolder.getCrazyTextList().size() > 0) {
@@ -110,11 +183,14 @@ public class MainVideoActivity extends AppCompatActivity {
             for (CrazyText crazyText : this.crazyTextHolder.getCrazyTextList()) {
                 TextView crazyTextView = crazyText.getCrazyTextView();
 
-                new CountDownTimer(this.videoView.getDuration(), 30) {
+                new CountDownTimer(this.videoView.getPlayer().getDuration(), 30) {
 
                     @Override
                     public void onTick(long millisUntilFinished) {
-                        Point point = crazyText.getSample(videoView.getCurrentPosition() / 25);
+                        if (!videoView.getPlayer().getPlayWhenReady())
+                            cancel();
+
+                        Point point = crazyText.getSample((int) videoView.getPlayer().getCurrentPosition() / 25);
                         if (point != null) {
                             crazyTextView.animate().x(point.x).y(point.y).setDuration(0).start();
                         }
@@ -122,7 +198,7 @@ public class MainVideoActivity extends AppCompatActivity {
 
                     @Override
                     public void onFinish() {
-                        if (videoView.isPlaying())
+                        if (videoView.getPlayer().getPlayWhenReady())
                             this.start();
                     }
                 }.start();
@@ -139,8 +215,8 @@ public class MainVideoActivity extends AppCompatActivity {
             this.playPauseButton.setLayoutParams(params);
             this.addTextButton.setVisibility(View.VISIBLE);
         } else
-            this.videoViewMediaPlayer.setLooping(true);
-        this.videoView.pause();
+            this.videoView.getPlayer().setRepeatMode(Player.REPEAT_MODE_ALL);
+        this.videoView.getPlayer().setPlayWhenReady(false);
     }
 
     public void showAddTextDialog() {
@@ -162,13 +238,14 @@ public class MainVideoActivity extends AppCompatActivity {
         this.addTextButton.setVisibility(View.GONE);
         this.saveButton.setVisibility(View.VISIBLE);
 
-        this.videoView.seekTo(0);
+        this.videoView.getPlayer().seekTo(0);
         this.videoSeekBar.setProgress(0);
 
-        this.videoViewController = new VideoViewController(this, text);
-        this.videoView.setOnTouchListener(this.videoViewController);
+        VideoViewController videoViewController = new VideoViewController(this, text);
+        this.videoView.setOnTouchListener(videoViewController);
 
         this.showDeleteTextsLayout(false);
+        this.disableUserVideoTracking();
     }
 
     public void saveCrazyText() {
@@ -177,7 +254,7 @@ public class MainVideoActivity extends AppCompatActivity {
         this.addTextButton.setVisibility(View.VISIBLE);
         this.showDeleteTextsLayout(true);
 
-        this.videoView.seekTo(0);
+        this.videoView.getPlayer().seekTo(0);
         this.videoSeekBar.setProgress(0);
 
         for (CrazyText crazyText : this.crazyTextHolder.getCrazyTextList()) {
@@ -192,6 +269,7 @@ public class MainVideoActivity extends AppCompatActivity {
         this.refreshCrazyTextSpinner();
 
         this.showDeleteTextsLayout(true);
+        this.enableUserVideoTracking();
     }
 
     public String getSelectedCrazyText() {
@@ -220,7 +298,15 @@ public class MainVideoActivity extends AppCompatActivity {
     }
 
     public void seekVideoTo(int time) {
-        this.videoView.seekTo(time);
+        this.videoView.getPlayer().seekTo(time);
+        for (CrazyText crazyText : this.crazyTextHolder.getCrazyTextList()) {
+            TextView crazyTextView = crazyText.getCrazyTextView();
+            Point sample = crazyText.getSample(time / 25);
+            if (sample != null) {
+                crazyTextView.setX(sample.x);
+                crazyTextView.setY(sample.y);
+            }
+        }
     }
 
     private void showDeleteTextsLayout(boolean show) {
@@ -233,8 +319,8 @@ public class MainVideoActivity extends AppCompatActivity {
     private class TrackVideoUpdateSeekBarRunnable implements Runnable {
         @Override
         public void run() {
-            if (videoView.isPlaying()) {
-                videoSeekBar.setProgress(videoView.getCurrentPosition());
+            if (videoView.getPlayer().getPlayWhenReady()) {
+                videoSeekBar.setProgress((int) videoView.getPlayer().getCurrentPosition());
                 videoSeekBar.postDelayed(this, 100);
             }
         }

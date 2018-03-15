@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -11,17 +12,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <VideoView
+        <com.google.android.exoplayer2.ui.PlayerView
             android:id="@+id/video_player"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            app:use_controller="false" />
 
     </FrameLayout>
 
     <SeekBar
         android:id="@+id/video_seek_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:layout_marginEnd="10dp"
         android:layout_marginStart="10dp"
         android:layout_marginTop="10dp" />
