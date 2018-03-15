@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">CrazyVids</string>
+    <string name="play_button_text">Play</string>
+    <string name="add_text_button_text">Add text</string>
+    <string name="pause_button_text">Pause</string>
+    <string name="save_button_text">Save</string>
 </resources>
