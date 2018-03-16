@@ -21,6 +21,12 @@ public class MainVideoButtonController implements View.OnClickListener {
         this.mainVideoActivity = mainVideoActivity;
     }
 
+    /**
+     * Decides what to do depending on the button pressed by the user
+     *
+     * @param view
+     */
+
     @Override
     public void onClick(View view) {
 

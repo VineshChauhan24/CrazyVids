@@ -15,6 +15,13 @@ import java.util.Random;
  * Created by Berkin on 15.03.2018.
  */
 
+/**
+ * The model object for the texts entered and moved around by the user. There are only two fields
+ * to be mentioned here. The first one is a simple TextView field representing the text and the
+ * other crucial field is the SparseArray holding the (time, Point) pairs for that given text.
+ * So when a sampling is made, the resuling pair (time, Point) is put into the "path" field and then
+ * read back when the video is played / previewed.
+ */
 public class CrazyText {
 
     private TextView crazyTextView;

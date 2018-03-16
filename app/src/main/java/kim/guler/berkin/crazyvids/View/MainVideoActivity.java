@@ -49,6 +49,8 @@ import kim.guler.berkin.crazyvids.R;
 
 public class MainVideoActivity extends AppCompatActivity {
 
+    public static final int SAMPLING_RATE = 30;
+
     private PlayerView videoView;
     private Button playPauseButton, addTextButton, saveButton, deleteCrazyTextButton;
     private SeekBar videoSeekBar;
@@ -98,6 +100,10 @@ public class MainVideoActivity extends AppCompatActivity {
         this.videoCanvas = findViewById(R.id.video_canvas);
     }
 
+    /**
+     * In this method, the provided mp4 video file is included as a raw resource and therefore
+     * loaded into the ExoPlayer accordingly.
+     */
     private void loadVideo() {
 
         BandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
@@ -118,52 +124,20 @@ public class MainVideoActivity extends AppCompatActivity {
         MediaSource videoSource = new ExtractorMediaSource.Factory(factory).createMediaSource(rawResourceDataSource.getUri());
         player.prepare(videoSource);
 
-        player.addListener(new Player.EventListener() {
-            @Override
-            public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
-                videoSeekBar.setMax((int) player.getDuration());
-            }
-
-            @Override
-            public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
-            }
-
-            @Override
-            public void onLoadingChanged(boolean isLoading) {
-            }
-
-            @Override
-            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
-            }
-
-            @Override
-            public void onRepeatModeChanged(int repeatMode) {
-            }
-
-            @Override
-            public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
-            }
-
-            @Override
-            public void onPlayerError(ExoPlaybackException error) {
-            }
-
-            @Override
-            public void onPositionDiscontinuity(int reason) {
-            }
-
-            @Override
-            public void onPlaybackParametersChanged(PlaybackParameters playbackParameters) {
-            }
-
-            @Override
-            public void onSeekProcessed() {
-            }
-        });
+        player.addListener(new MediaPlayerListener());
 
         player.setRepeatMode(Player.REPEAT_MODE_ALL);
     }
 
+    /**
+     * This method enables the video to play on the screen either when we are sampling the finger
+     * path or when the play button is pressed to preview the video.
+     * <p>
+     * CountDownTimer implemented in this method takes care of moving the previously saved texts
+     * around the video according to their own paths.
+     *
+     * @param samplingMode true if user is saving a touch path on the video
+     */
     public void playVideo(boolean samplingMode) {
         if (!samplingMode) {
             this.playPauseButton.setText(getString(R.string.pause_button_text));
@@ -183,14 +157,14 @@ public class MainVideoActivity extends AppCompatActivity {
             for (CrazyText crazyText : this.crazyTextHolder.getCrazyTextList()) {
                 TextView crazyTextView = crazyText.getCrazyTextView();
 
-                new CountDownTimer(this.videoView.getPlayer().getDuration(), 30) {
+                new CountDownTimer(this.videoView.getPlayer().getDuration(), SAMPLING_RATE) {
 
                     @Override
                     public void onTick(long millisUntilFinished) {
                         if (!videoView.getPlayer().getPlayWhenReady())
                             cancel();
 
-                        Point point = crazyText.getSample((int) videoView.getPlayer().getCurrentPosition() / 25);
+                        Point point = crazyText.getSample((int) videoView.getPlayer().getCurrentPosition() / SAMPLING_RATE);
                         if (point != null) {
                             crazyTextView.animate().x(point.x).y(point.y).setDuration(0).start();
                         }
@@ -206,6 +180,11 @@ public class MainVideoActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * This method pauses the video on the screen either when the user is done with touching the
+     * screen or when the play button is pressed to preview the video.
+     * @param samplingMode true if user was saving a touch path on the video.
+     */
     public void pauseVideo(boolean samplingMode) {
         if (!samplingMode) {
             this.playPauseButton.setText(getString(R.string.play_button_text));
@@ -230,6 +209,12 @@ public class MainVideoActivity extends AppCompatActivity {
         inputTextDialogBuilder.show();
     }
 
+    /**
+     * Called from the text input dialog when the OK button is clicked. This method switches the
+     * screen from state 1 to 2.
+     *
+     * @param text text entered into the text input dialog
+     */
     private void addText(String text) {
         if (text.isEmpty())
             return;
@@ -248,6 +233,11 @@ public class MainVideoActivity extends AppCompatActivity {
         this.disableUserVideoTracking();
     }
 
+    /**
+     * Called when the save button is pressed on the screen 2 which switches the screen back to 1
+     * while also saving the previously entered text and taking care of resetting video to its
+     * initial position.
+     */
     public void saveCrazyText() {
         this.saveButton.setVisibility(View.GONE);
         this.playPauseButton.setVisibility(View.VISIBLE);
@@ -281,6 +271,10 @@ public class MainVideoActivity extends AppCompatActivity {
         this.refreshCrazyTextSpinner();
     }
 
+    /**
+     * This method populates the spinner if there is any text that can be deleted. Takes care of
+     * creating a valid adapter for the spinner basically.
+     */
     private void refreshCrazyTextSpinner() {
         if (this.crazyTextHolder.getCrazyTextList().size() == 0) {
             this.showDeleteTextsLayout(false);
@@ -301,7 +295,7 @@ public class MainVideoActivity extends AppCompatActivity {
         this.videoView.getPlayer().seekTo(time);
         for (CrazyText crazyText : this.crazyTextHolder.getCrazyTextList()) {
             TextView crazyTextView = crazyText.getCrazyTextView();
-            Point sample = crazyText.getSample(time / 25);
+            Point sample = crazyText.getSample(time / SAMPLING_RATE);
             if (sample != null) {
                 crazyTextView.setX(sample.x);
                 crazyTextView.setY(sample.y);
@@ -316,6 +310,9 @@ public class MainVideoActivity extends AppCompatActivity {
             this.deleteTextsLayout.setVisibility(View.GONE);
     }
 
+    /**
+     * This class synchronizes the seekbar with the video progress.
+     */
     private class TrackVideoUpdateSeekBarRunnable implements Runnable {
         @Override
         public void run() {
@@ -323,6 +320,63 @@ public class MainVideoActivity extends AppCompatActivity {
                 videoSeekBar.setProgress((int) videoView.getPlayer().getCurrentPosition());
                 videoSeekBar.postDelayed(this, 100);
             }
+        }
+    }
+
+    /**
+     * This class is a listener for the events being fired in the ExoPlayer which enables us to
+     * detect the video length so that we can set the seekbar max value.
+     */
+    private class MediaPlayerListener implements Player.EventListener {
+
+        @Override
+        public void onTimelineChanged(Timeline timeline, Object manifest, int reason) {
+            videoSeekBar.setMax((int) videoView.getPlayer().getDuration());
+        }
+
+        @Override
+        public void onTracksChanged(TrackGroupArray trackGroups, TrackSelectionArray trackSelections) {
+
+        }
+
+        @Override
+        public void onLoadingChanged(boolean isLoading) {
+
+        }
+
+        @Override
+        public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+
+        }
+
+        @Override
+        public void onRepeatModeChanged(int repeatMode) {
+
+        }
+
+        @Override
+        public void onShuffleModeEnabledChanged(boolean shuffleModeEnabled) {
+
+        }
+
+        @Override
+        public void onPlayerError(ExoPlaybackException error) {
+
+        }
+
+        @Override
+        public void onPositionDiscontinuity(int reason) {
+
+        }
+
+        @Override
+        public void onPlaybackParametersChanged(PlaybackParameters playbackParameters) {
+
+        }
+
+        @Override
+        public void onSeekProcessed() {
+
         }
     }
 }

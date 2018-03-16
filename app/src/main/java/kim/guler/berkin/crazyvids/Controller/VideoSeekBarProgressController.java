@@ -16,6 +16,13 @@ public class VideoSeekBarProgressController implements SeekBar.OnSeekBarChangeLi
         this.mainVideoActivity = mainVideoActivity;
     }
 
+    /**
+     * Just a basic controller letting user to seek video to wherever desired
+     *
+     * @param seekBar
+     * @param progress
+     * @param fromUser
+     */
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (!fromUser)

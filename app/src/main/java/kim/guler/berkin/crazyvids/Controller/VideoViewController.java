@@ -35,6 +35,32 @@ public class VideoViewController implements View.OnTouchListener, Player.EventLi
         this.crazyText = this.crazyTextHolder.createCrazyText(crazyText, mainVideoActivity);
     }
 
+    /**
+     * This method implements an onTouch method logic so that we can detect when the user presses
+     * on the video view to enter a path for his text. Here we have 3 states:
+     * <p>
+     * 1- ACTION_DOWN
+     * This state means that the user touched the video view for the first time. Therefore, this
+     * coordinate (x,y) will be the initial point for the text to appear on the video.
+     * <p>
+     * 2- ACTION_MOVE
+     * If we are receiving actions with this event state, it means that the user is still pressing
+     * on the screen so that we need to move the text according to this movement while also sampling
+     * these movements to be used later on.
+     * However, we also need to check whether the video is ended or not. We can allow user to move
+     * on the screen as long as the video continues and whenever the video is finished we have to
+     * return false to indicate that we can no longer accept any movement on the screen.
+     * <p>
+     * 3- ACTION_UP
+     * If we are in this state, either the user stopped pressing on the screen indicating that
+     * the movement path for this text should only be this much long, or the video is ended and we
+     * forced user to stop entering any further path by previously returning false in the previous
+     * state.
+     *
+     * @param view
+     * @param event
+     * @return
+     */
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouch(View view, MotionEvent event) {
@@ -63,7 +89,7 @@ public class VideoViewController implements View.OnTouchListener, Player.EventLi
                     int cury = (int) event.getRawY() - this.crazyText.getCrazyTextView().getHeight() / 2;
 
                     this.crazyText.getCrazyTextView().animate().x(curx).y(cury).setDuration(0).start();
-                    this.crazyText.addSample((int) videoView.getPlayer().getCurrentPosition() / 25, new Point(curx, cury));
+                    this.crazyText.addSample((int) videoView.getPlayer().getCurrentPosition() / MainVideoActivity.SAMPLING_RATE, new Point(curx, cury));
 
                     return true;
                 } else {
@@ -96,6 +122,14 @@ public class VideoViewController implements View.OnTouchListener, Player.EventLi
 
     }
 
+    /**
+     * This method is fired when there is a state chance occurred in the ExoPlayer so by checking
+     * if that was a STATE_ENDED switch, then we can say that the video is ended. This is needed by
+     * the onTouch() method explained above.
+     *
+     * @param playWhenReady
+     * @param playbackState
+     */
     @Override
     public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
         if (playbackState == Player.STATE_ENDED)

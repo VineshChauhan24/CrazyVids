@@ -10,6 +10,14 @@ import java.util.List;
  * Created by Berkin on 14.03.2018.
  */
 
+/**
+ * This is a not-so-sophisticated singleton object holding the texts entered by the user and moved
+ * around the video. First idea was to only hold a list for these texts in the VideoViewController
+ * class, however, the coupling of that class with others was going to be more cumbersome, therefore
+ * holding a singleton object holding a list for these texts seemed a better approach also enabling
+ * faster and cleaner implementation while saving paths for these texts in screen 2 and playing them
+ * back in screen 1.
+ */
 public class CrazyTextHolder {
     private static final CrazyTextHolder ourInstance = new CrazyTextHolder();
 
